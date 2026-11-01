@@ -41,7 +41,7 @@ def _u32(i: int) -> bytes:
 def _derive_scalar(b: bytes, discrim: int | None = None) -> int:
     i = 0
     while True:
-        data = b + (_u32(discrim) if discrim is not None else b"") + _u32(i)
+        data = b + (_u32(discrim) if discrim is not None else b"") + _u32(i)  # pyright: ignore
         key = int.from_bytes(_sha512_half(data), "big")
         if 0 < key < _N:
             return key
@@ -51,10 +51,9 @@ def _derive_scalar(b: bytes, discrim: int | None = None) -> int:
 def secp256k1_derive_keypair(entropy: bytes) -> tuple[str, str]:
     ent16 = entropy[:16]
     root = _derive_scalar(ent16)
-    pub_gen = (_G * root).to_bytes("compressed")
-    account = (_derive_scalar(pub_gen, 0) + root) % _N
+    account = (_derive_scalar((_G * root).to_bytes(encoding="compressed"), 0) + root) % _N  # pyright: ignore [reportArgumentType]
     private_key = b"\x00" + account.to_bytes(32, "big")
-    public_key = (_G * account).to_bytes("compressed")
+    public_key = (_G * account).to_bytes(encoding="compressed")
     return private_key.hex().upper(), public_key.hex().upper()
 
 def derive_address(public_key_hex: str) -> str:
@@ -68,8 +67,7 @@ def derive_xrp(mnemonic_phrase: str, passphrase: str = "") -> dict:
     family_seed = ripple_generate_seed(chaincode)
     priv, pub = secp256k1_derive_keypair(chaincode)
     address = derive_address(pub)
-    outdict = {
-
+    return {
         "bip39_seed": seed.hex(),
         "chainCode": chaincode.hex(),
         "family_seed(secret)": family_seed,
@@ -77,10 +75,9 @@ def derive_xrp(mnemonic_phrase: str, passphrase: str = "") -> dict:
         "publicKey": pub,
         "address": address,
     }
-    return outdict
 
 if __name__ == "__main__":
-    mnemonic = input("enter your 12 word atomicc mnemonic> ")
+    mnemonic = input("enter your atomic mnemonic> ")
     if Bip39MnemonicValidator().IsValid(mnemonic):
         print(json.dumps(derive_xrp(mnemonic)))
     else:
